@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.git
+.gitignore
+*.md
+.vscode
+.windsurf
+*.xlsx
+*.csv
+*.json
+!model_metadata.json

@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telecom Churn Prediction Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+        
+        .nav-tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .stat-card h3 {
+            font-size: 0.875rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            color: #1f2937;
+        }
+        
+        .stat-card.high { border-left: 4px solid #ef4444; }
+        .stat-card.medium { border-left: 4px solid #f59e0b; }
+        .stat-card.low { border-left: 4px solid #10b981; }
+        .stat-card.info { border-left: 4px solid #3b82f6; }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filters select, .filters input {
+            padding: 0.6rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: white;
+        }
+        
+        .filters input {
+            min-width: 250px;
+        }
+        
+        .customer-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .customer-table th {
+            text-align: left;
+            padding: 1rem;
+            background: #f9fafb;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .customer-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .customer-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .risk-badge.high {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        
+        .risk-badge.medium {
+            background: #fffbeb;
+            color: #d97706;
+        }
+        
+        .risk-badge.low {
+            background: #ecfdf5;
+            color: #059669;
+        }
+        
+        .reason-tag {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 0.15rem;
+            color: #4b5563;
+        }
+        
+        .probability-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .probability-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .probability-fill.high { background: #ef4444; }
+        .probability-fill.medium { background: #f59e0b; }
+        .probability-fill.low { background: #10b981; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        
+        .shap-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .shap-feature {
+            font-weight: 500;
+        }
+        
+        .shap-value {
+            font-weight: 600;
+        }
+        
+        .shap-value.positive { color: #dc2626; }
+        .shap-value.negative { color: #059669; }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+        
+        .reasons-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .reason-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background: #f9fafb;
+            border-radius: 6px;
+        }
+        
+        .reason-rank {
+            width: 24px;
+            height: 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        
+        .prediction-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .prediction-result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .prediction-result.show {
+            display: block;
+        }
+        
+        .probability-display {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .probability-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .probability-circle.high { background: #ef4444; }
+        .probability-circle.medium { background: #f59e0b; }
+        .probability-circle.low { background: #10b981; }
+        
+        .probability-info h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .probability-info p {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📞 Telecom Churn Prediction Dashboard</h1>
+        <p>AI-powered risk assessment with SHAP explainability</p>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="nav-tab" onclick="showTab('predict')">🔮 Predict</button>
+            <button class="nav-tab" onclick="showTab('roi')">💰 ROI</button>
+            <button class="nav-tab" onclick="showTab('monitoring')">📡 Monitoring</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard-tab" class="tab-content active">
+        <!-- Statistics Cards -->
+        <div class="stats-grid" id="statsContainer">
+            <div class="stat-card high">
+                <h3>High Risk Customers</h3>
+                <div class="value" id="highRiskCount">-</div>
+            </div>
+            <div class="stat-card medium">
+                <h3>Medium Risk</h3>
+                <div class="value" id="mediumRiskCount">-</div>
+            </div>
+            <div class="stat-card low">
+                <h3>Low Risk</h3>
+                <div class="value" id="lowRiskCount">-</div>
+            </div>
+            <div class="stat-card info">
+                <h3>Avg. Churn Probability</h3>
+                <div class="value" id="avgProbability">-</div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2>Risk Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Top Churn Reasons</h2>
+                <div class="chart-container">
+                    <canvas id="reasonsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer List -->
+        <div class="card">
+            <h2>At-Risk Customers</h2>
+            
+            <div class="filters">
+                <select id="riskFilter">
+                    <option value="All">All Risk Levels</option>
+                    <option value="High">High Risk</option>
+                    <option value="Medium">Medium Risk</option>
+                    <option value="Low">Low Risk</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="Search customer ID...">
+            </div>
+            
+            <div id="customerTableContainer">
+                <div class="loading">Loading customers...</div>
+            </div>
+        </div>
+        </div>
+        
+        <!-- PREDICTION TAB -->
+        <div id="predict-tab" class="tab-content">
+        
+        <!-- Excel Upload Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>� Bulk Prediction (Excel/CSV)</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                Upload an Excel or CSV file with multiple customers for batch prediction.
+                <a href="/api/template" style="color: #667eea; text-decoration: none;">Download Template</a>
+            </p>
+            
+            <div id="uploadArea" style="border: 2px dashed #d1d5db; border-radius: 12px; padding: 3rem; text-align: center; background: #f9fafb;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                    Drag & drop your Excel/CSV file here, or click to browse
+                </p>
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display: none;">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('excelFile').click()">
+                    Choose File
+                </button>
+            </div>
+            
+            <div id="uploadResult" style="margin-top: 1.5rem; display: none;">
+                <div id="uploadStats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <!-- Stats will be populated here -->
+                </div>
+                <div id="uploadPreview" style="max-height: 300px; overflow: auto;">
+                    <!-- Preview table will be populated here -->
+                </div>
+                <div style="margin-top: 1rem;">
+                    <a id="downloadBtn" href="/api/download/predictions" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
+                        ⬇️ Download All Predictions (CSV)
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Single Prediction Form -->
+        <div class="card">
+            <h2>🔮 Single Customer Prediction</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                Enter customer details for an instant individual churn risk assessment.
+            </p>
+            
+            <form id="predictionForm" class="prediction-form">
+                <div class="form-group">
+                    <label for="customer_id">Customer ID (optional)</label>
+                    <input type="text" id="customer_id" placeholder="Auto-generated if empty">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tenure">Tenure (months)</label>
+                    <input type="number" id="tenure" value="12" min="1" max="72">
+                </div>
+                
+                <div class="form-group">
+                    <label for="monthly_charges">Monthly Charges ($)</label>
+                    <input type="number" id="monthly_charges" value="65" min="20" max="120" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="total_charges">Total Charges ($)</label>
+                    <input type="number" id="total_charges" value="780" min="0" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="contract_type">Contract Type</label>
+                    <select id="contract_type">
+                        <option value="Month-to-Month">Month-to-Month</option>
+                        <option value="One Year">One Year</option>
+                        <option value="Two Year">Two Year</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="payment_method">Payment Method</label>
+                    <select id="payment_method">
+                        <option value="Electronic Check">Electronic Check</option>
+                        <option value="Mailed Check">Mailed Check</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Credit Card">Credit Card</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="internet_service">Internet Service</label>
+                    <select id="internet_service">
+                        <option value="Fiber Optic">Fiber Optic</option>
+                        <option value="DSL">DSL</option>
+                        <option value="No">No Internet</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tech_support_calls">Tech Support Calls</label>
+                    <input type="number" id="tech_support_calls" value="0" min="0" max="10">
+                </div>
+                
+                <div class="form-group">
+                    <label for="has_premium_support">Premium Support</label>
+                    <select id="has_premium_support">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="price_shock_percent">Price Shock (%)</label>
+                    <input type="number" id="price_shock_percent" value="0" step="0.1" 
+                           title="Percentage change in last month's bill vs 6-month average">
+                </div>
+                
+                <div class="form-group">
+                    <label for="usage_spike_3month">Usage Spike (3 months)</label>
+                    <select id="usage_spike_3month">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="data_usage_gb">Data Usage (GB)</label>
+                    <input type="number" id="data_usage_gb" value="50" min="0" max="300" step="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="overage_charges">Overage Charges ($)</label>
+                    <input type="number" id="overage_charges" value="0" min="0" step="0.01">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">🚀 Predict Churn Risk</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                </div>
+            </form>
+            
+            <div id="predictionResult" class="prediction-result">
+                <div class="probability-display">
+                    <div id="probabilityCircle" class="probability-circle"></div>
+                    <div class="probability-info">
+                        <h3 id="riskTitle">Risk Level</h3>
+                        <p id="riskDescription"></p>
+                        <p id="customerIdDisplay"></p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem;">Top Churn Reasons</h4>
+                    <div id="predictionReasons" class="reasons-list"></div>
+                </div>
+                
+                <div id="predictionActions" style="margin-top: 1.5rem; display: none;">
+                    <h4 style="margin-bottom: 0.75rem; color: #059669;">🎯 Recommended Retention Actions</h4>
+                    <div id="retentionActionsList" class="reasons-list"></div>
+                </div>
+                
+                <div id="predictionRoi" style="margin-top: 1.5rem; display: none;">
+                    <h4 style="margin-bottom: 0.75rem; color: #3b82f6;">💰 Cost-Benefit Analysis</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.8rem; color: #6b7280;">Revenue at Risk</div>
+                            <div id="predRevenueLoss" style="font-size: 1.3rem; font-weight: 700; color: #dc2626;">-</div>
+                        </div>
+                        <div style="background: #fffbeb; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.8rem; color: #6b7280;">Retention Cost</div>
+                            <div id="predRetentionCost" style="font-size: 1.3rem; font-weight: 700; color: #d97706;">-</div>
+                        </div>
+                        <div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.8rem; color: #6b7280;">ROI</div>
+                            <div id="predRoi" style="font-size: 1.3rem; font-weight: 700; color: #059669;">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+        
+        <!-- ROI TAB -->
+        <div id="roi-tab" class="tab-content">
+            <div class="stats-grid" id="roiStatsContainer">
+                <div class="stat-card high">
+                    <h3>Total Revenue at Risk</h3>
+                    <div class="value" id="totalRevenueLoss">-</div>
+                </div>
+                <div class="stat-card info">
+                    <h3>Retention Investment</h3>
+                    <div class="value" id="totalRetentionCost">-</div>
+                </div>
+                <div class="stat-card low">
+                    <h3>Net Savings Potential</h3>
+                    <div class="value" id="netSavings">-</div>
+                </div>
+                <div class="stat-card medium">
+                    <h3>Average ROI</h3>
+                    <div class="value" id="avgRoi">-</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>💰 Cost-Benefit Analysis</h2>
+                <p style="color: #6b7280; margin-bottom: 1rem;">
+                    Compares expected revenue loss from churn vs. cost of retention actions.
+                </p>
+                <div id="roiChartContainer" class="chart-container">
+                    <canvas id="roiChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>📋 ROI Breakdown by Risk Level</h2>
+                <div id="roiBreakdown" style="overflow-x: auto;">
+                    <div class="loading">Loading ROI data...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MONITORING TAB -->
+        <div id="monitoring-tab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card info">
+                    <h3>Model AUC</h3>
+                    <div class="value" id="currentAuc">-</div>
+                </div>
+                <div class="stat-card low">
+                    <h3>Model Status</h3>
+                    <div class="value" id="modelStatus">-</div>
+                </div>
+                <div class="stat-card medium">
+                    <h3>Drift Status</h3>
+                    <div class="value" id="driftStatus">-</div>
+                </div>
+                <div class="stat-card high">
+                    <h3>Alerts</h3>
+                    <div class="value" id="alertCount">-</div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid" style="margin-top: 1.5rem;">
+                <div class="card">
+                    <h2>📈 Model Performance History</h2>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>🔍 Data Drift Detection</h2>
+                    <p style="color: #6b7280; margin-bottom: 1rem;">
+                        Compares current data distribution against training data baseline.
+                    </p>
+                    <div id="driftResults" style="overflow-x: auto;">
+                        <div class="loading">Run drift check to see results</div>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="runDriftCheck()" style="margin-top: 1rem;">
+                        🔍 Run Drift Check
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>🔔 Alert History</h2>
+                <div id="alertHistory" style="overflow-x: auto;">
+                    <div class="loading">Loading alerts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Customer Details</h2>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalContent">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let riskChart, reasonsChart;
+        
+        // Load statistics
+        async function loadStats() {
+            const response = await fetch('/api/statistics');
+            const stats = await response.json();
+            
+            document.getElementById('highRiskCount').textContent = stats.high_risk || 0;
+            document.getElementById('mediumRiskCount').textContent = stats.medium_risk || 0;
+            document.getElementById('lowRiskCount').textContent = stats.low_risk || 0;
+            document.getElementById('avgProbability').textContent = stats.avg_probability || '-';
+        }
+        
+        // Load and render risk chart
+        async function loadRiskChart() {
+            const response = await fetch('/api/statistics');
+            const stats = await response.json();
+            
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            riskChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+                    datasets: [{
+                        data: [stats.high_risk, stats.medium_risk, stats.low_risk],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load and render reasons chart
+        async function loadReasonsChart() {
+            const response = await fetch('/api/reasons');
+            const reasons = await response.json();
+            
+            const labels = reasons.map(r => r[0]);
+            const data = reasons.map(r => r[1]);
+            
+            const ctx = document.getElementById('reasonsChart').getContext('2d');
+            reasonsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Frequency',
+                        data: data,
+                        backgroundColor: '#667eea',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load customer table
+        async function loadCustomers() {
+            const riskFilter = document.getElementById('riskFilter').value;
+            const searchQuery = document.getElementById('searchInput').value;
+            
+            const url = `/api/customers?risk_level=${riskFilter}&search=${searchQuery}`;
+            const response = await fetch(url);
+            const customers = await response.json();
+            
+            const container = document.getElementById('customerTableContainer');
+            
+            if (customers.length === 0) {
+                container.innerHTML = '<div class="loading">No customers found.</div>';
+                return;
+            }
+            
+            let html = `
+                <table class="customer-table">
+                    <thead>
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Churn Probability</th>
+                            <th>Risk Level</th>
+                            <th>Top Reasons</th>
+                            <th>Predicted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            customers.forEach(c => {
+                const probValue = parseFloat(c.churn_probability) / 100;
+                html += `
+                    <tr onclick="showCustomerDetail('${c.customer_id}')" style="cursor: pointer;">
+                        <td><strong>${c.customer_id}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="min-width: 50px;">${c.churn_probability}</span>
+                                <div class="probability-bar" style="width: 100px;">
+                                    <div class="probability-fill ${c.risk_class}" 
+                                         style="width: ${probValue * 100}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="risk-badge ${c.risk_class}">${c.risk_level}</span></td>
+                        <td>
+                            ${c.reasons.map(r => `<span class="reason-tag">${r}</span>`).join('')}
+                        </td>
+                        <td>${c.predicted_at}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        // Show customer detail modal
+        async function showCustomerDetail(customerId) {
+            const modal = document.getElementById('detailModal');
+            const content = document.getElementById('modalContent');
+            modal.style.display = 'flex';
+            content.innerHTML = '<div class="loading">Loading details...</div>';
+            
+            const response = await fetch(`/api/customer/${customerId}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                content.innerHTML = `<div class="loading">${data.error}</div>`;
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">${data.customer_id}</h3>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <span class="risk-badge ${data.risk_level.toLowerCase()}">${data.risk_level}</span>
+                        <span style="font-size: 1.2rem; font-weight: 600; color: #dc2626;">
+                            ${(data.churn_probability * 100).toFixed(1)}% Churn Risk
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: #6b7280;">Top Churn Reasons</h4>
+                    <div class="reasons-list">
+                        ${data.top_reasons.map((r, i) => `
+                            <div class="reason-item">
+                                <span class="reason-rank">${i + 1}</span>
+                                <span>${r}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="margin-bottom: 0.75rem; color: #6b7280;">Feature Impact (SHAP)</h4>
+                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">
+                        Positive values increase churn risk, negative values decrease it.
+                    </div>
+            `;
+            
+            data.shap_breakdown.forEach(item => {
+                const isPositive = item.impact > 0;
+                html += `
+                    <div class="shap-row">
+                        <span class="shap-feature">${item.feature.replace(/_/g, ' ')}</span>
+                        <span class="shap-value ${isPositive ? 'positive' : 'negative'}">
+                            ${isPositive ? '+' : ''}${item.impact.toFixed(4)}
+                        </span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            // Retention Actions
+            if (data.retention_actions && data.retention_actions.length > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.75rem; color: #059669;">🎯 Recommended Retention Actions</h4>
+                        <div class="reasons-list">
+                            ${data.retention_actions.map((a, i) => `
+                                <div class="reason-item" style="background: #ecfdf5;">
+                                    <span class="reason-rank" style="background: #059669;">${i + 1}</span>
+                                    <span>${a}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // ROI
+            if (data.expected_revenue_loss > 0 || data.retention_cost > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.75rem; color: #3b82f6;">💰 Cost-Benefit Analysis</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
+                            <div style="background: #fef2f2; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 0.75rem; color: #6b7280;">Revenue at Risk</div>
+                                <div style="font-weight: 700; color: #dc2626;">$${data.expected_revenue_loss.toFixed(2)}</div>
+                            </div>
+                            <div style="background: #fffbeb; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 0.75rem; color: #6b7280;">Retention Cost</div>
+                                <div style="font-weight: 700; color: #d97706;">$${data.retention_cost.toFixed(2)}</div>
+                            </div>
+                            <div style="background: #ecfdf5; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 0.75rem; color: #6b7280;">ROI</div>
+                                <div style="font-weight: 700; color: #059669;">${data.retention_roi.toFixed(1)}x</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Risk Timeline
+            if (data.risk_history && data.risk_history.length > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.75rem; color: #6b7280;">📈 Risk Timeline</h4>
+                        <div style="display: flex; align-items: flex-end; gap: 2px; height: 80px; padding: 0.5rem 0;">
+                            ${data.risk_history.map(h => {
+                                const pct = h.probability * 100;
+                                const color = h.risk_level === 'High' ? '#ef4444' : h.risk_level === 'Medium' ? '#f59e0b' : '#10b981';
+                                return `<div title="${h.date}: ${pct.toFixed(1)}% (${h.risk_level})" 
+                                    style="flex: 1; height: ${Math.max(pct, 5)}%; background: ${color}; border-radius: 3px 3px 0 0; min-width: 8px; cursor: pointer;"></div>`;
+                            }).join('')}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #9ca3af;">
+                            ${data.risk_history.length > 0 ? `<span>${data.risk_history[0].date}</span>` : ''}
+                            ${data.risk_history.length > 1 ? `<span>${data.risk_history[data.risk_history.length - 1].date}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            content.innerHTML = html;
+        }
+        
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+        
+        // Event listeners
+        document.getElementById('riskFilter').addEventListener('change', loadCustomers);
+        document.getElementById('searchInput').addEventListener('input', debounce(loadCustomers, 300));
+        
+        // Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // Close modal on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // Tab switching
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        // Prediction form handling
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                customer_id: document.getElementById('customer_id').value || undefined,
+                tenure: parseInt(document.getElementById('tenure').value),
+                monthly_charges: parseFloat(document.getElementById('monthly_charges').value),
+                total_charges: parseFloat(document.getElementById('total_charges').value),
+                contract_type: document.getElementById('contract_type').value,
+                payment_method: document.getElementById('payment_method').value,
+                internet_service: document.getElementById('internet_service').value,
+                tech_support_calls: parseInt(document.getElementById('tech_support_calls').value),
+                has_premium_support: parseInt(document.getElementById('has_premium_support').value),
+                price_shock_percent: parseFloat(document.getElementById('price_shock_percent').value),
+                usage_spike_3month: parseInt(document.getElementById('usage_spike_3month').value),
+                data_usage_gb: parseFloat(document.getElementById('data_usage_gb').value),
+                overage_charges: parseFloat(document.getElementById('overage_charges').value)
+            };
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                    return;
+                }
+                
+                // Display results
+                displayPredictionResult(result);
+                
+            } catch (error) {
+                alert('Failed to get prediction: ' + error.message);
+            }
+        });
+        
+        function displayPredictionResult(result) {
+            const resultDiv = document.getElementById('predictionResult');
+            const circle = document.getElementById('probabilityCircle');
+            const riskTitle = document.getElementById('riskTitle');
+            const riskDesc = document.getElementById('riskDescription');
+            const customerId = document.getElementById('customerIdDisplay');
+            const reasonsDiv = document.getElementById('predictionReasons');
+            
+            // Set probability circle
+            const prob = result.churn_probability;
+            circle.textContent = (prob * 100).toFixed(1) + '%';
+            circle.className = 'probability-circle ' + result.risk_level.toLowerCase();
+            
+            // Set risk info
+            riskTitle.textContent = result.risk_level + ' Risk';
+            customerId.textContent = 'Customer ID: ' + result.customer_id;
+            
+            if (result.risk_level === 'High') {
+                riskDesc.textContent = 'This customer is likely to churn. Immediate retention action recommended.';
+            } else if (result.risk_level === 'Medium') {
+                riskDesc.textContent = 'This customer shows some churn indicators. Monitor closely.';
+            } else {
+                riskDesc.textContent = 'This customer is stable with low churn risk.';
+            }
+            
+            // Set reasons
+            reasonsDiv.innerHTML = result.top_reasons.map((reason, i) => `
+                <div class="reason-item">
+                    <span class="reason-rank">${i + 1}</span>
+                    <span>${reason}</span>
+                </div>
+            `).join('');
+            
+            // Retention Actions
+            const actionsDiv = document.getElementById('predictionActions');
+            const actionsList = document.getElementById('retentionActionsList');
+            if (result.retention_actions && result.retention_actions.length > 0) {
+                actionsList.innerHTML = result.retention_actions.map((action, i) => `
+                    <div class="reason-item" style="background: #ecfdf5;">
+                        <span class="reason-rank" style="background: #059669;">${i + 1}</span>
+                        <span>${action}</span>
+                    </div>
+                `).join('');
+                actionsDiv.style.display = 'block';
+            } else {
+                actionsDiv.style.display = 'none';
+            }
+            
+            // ROI
+            const roiDiv = document.getElementById('predictionRoi');
+            if (result.expected_revenue_loss > 0 || result.retention_cost > 0) {
+                document.getElementById('predRevenueLoss').textContent = '$' + result.expected_revenue_loss.toFixed(2);
+                document.getElementById('predRetentionCost').textContent = '$' + result.retention_cost.toFixed(2);
+                document.getElementById('predRoi').textContent = result.retention_roi.toFixed(1) + 'x';
+                roiDiv.style.display = 'block';
+            } else {
+                roiDiv.style.display = 'none';
+            }
+            
+            resultDiv.classList.add('show');
+        }
+        
+        function resetForm() {
+            document.getElementById('predictionForm').reset();
+            document.getElementById('predictionResult').classList.remove('show');
+            document.getElementById('predictionActions').style.display = 'none';
+            document.getElementById('predictionRoi').style.display = 'none';
+        }
+        
+        // Excel Upload Handling
+        const uploadArea = document.getElementById('uploadArea');
+        const excelFile = document.getElementById('excelFile');
+        
+        // Drag and drop events
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#eef2ff';
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#d1d5db';
+            uploadArea.style.background = '#f9fafb';
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#d1d5db';
+            uploadArea.style.background = '#f9fafb';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+        
+        // File input change
+        excelFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        async function handleFileUpload(file) {
+            // Validate file type
+            const validExtensions = ['.xlsx', '.xls', '.csv'];
+            const fileName = file.name.toLowerCase();
+            const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!isValid) {
+                alert('Please upload an Excel (.xlsx, .xls) or CSV file');
+                return;
+            }
+            
+            // Show loading state
+            uploadArea.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+                <p style="color: #667eea; font-weight: 500;">Processing ${file.name}...</p>
+            `;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/predict/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    uploadArea.innerHTML = `
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <p style="color: #dc2626;">Error: ${result.error}</p>
+                        <button type="button" class="btn btn-primary" onclick="resetUpload()" style="margin-top: 1rem;">Try Again</button>
+                    `;
+                    return;
+                }
+                
+                // Show success and results
+                uploadArea.innerHTML = `
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                    <p style="color: #059669; font-weight: 500;">${file.name} processed successfully!</p>
+                    <button type="button" class="btn btn-secondary" onclick="resetUpload()" style="margin-top: 1rem;">Upload Another File</button>
+                `;
+                
+                // Display results
+                displayUploadResults(result);
+                
+            } catch (error) {
+                uploadArea.innerHTML = `
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <p style="color: #dc2626;">Upload failed: ${error.message}</p>
+                    <button type="button" class="btn btn-primary" onclick="resetUpload()" style="margin-top: 1rem;">Try Again</button>
+                `;
+            }
+        }
+        
+        function displayUploadResults(result) {
+            const resultDiv = document.getElementById('uploadResult');
+            const statsDiv = document.getElementById('uploadStats');
+            const previewDiv = document.getElementById('uploadPreview');
+            
+            // Stats cards
+            statsDiv.innerHTML = `
+                <div class="stat-card high">
+                    <h3>High Risk</h3>
+                    <div class="value">${result.high_risk}</div>
+                </div>
+                <div class="stat-card medium">
+                    <h3>Medium Risk</h3>
+                    <div class="value">${result.medium_risk}</div>
+                </div>
+                <div class="stat-card low">
+                    <h3>Low Risk</h3>
+                    <div class="value">${result.low_risk}</div>
+                </div>
+                <div class="stat-card info">
+                    <h3>Total</h3>
+                    <div class="value">${result.total}</div>
+                </div>
+            `;
+            
+            // Preview table
+            const preview = result.preview;
+            let html = `
+                <table class="customer-table">
+                    <thead>
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Probability</th>
+                            <th>Risk</th>
+                            <th>Reason 1</th>
+                            <th>Reason 2</th>
+                            <th>Reason 3</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            preview.forEach(row => {
+                const riskClass = row.risk_level.toLowerCase();
+                html += `
+                    <tr>
+                        <td><strong>${row.customer_id}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="min-width: 50px;">${row.churn_probability_pct}</span>
+                                <div class="probability-bar" style="width: 80px;">
+                                    <div class="probability-fill ${riskClass}" 
+                                         style="width: ${row.churn_probability * 100}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="risk-badge ${riskClass}">${row.risk_level}</span></td>
+                        <td><span class="reason-tag">${row.reason_1}</span></td>
+                        <td><span class="reason-tag">${row.reason_2}</span></td>
+                        <td><span class="reason-tag">${row.reason_3}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            
+            if (result.total > 10) {
+                html += `<p style="text-align: center; color: #6b7280; margin-top: 1rem;">
+                    Showing 10 of ${result.total} rows. Download for full results.
+                </p>`;
+            }
+            
+            previewDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+        }
+        
+        function resetUpload() {
+            document.getElementById('excelFile').value = '';
+            document.getElementById('uploadResult').style.display = 'none';
+            uploadArea.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                    Drag & drop your Excel/CSV file here, or click to browse
+                </p>
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display: none;">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('excelFile').click()">
+                    Choose File
+                </button>
+            `;
+            
+            // Re-attach event listener
+            const newFileInput = document.getElementById('excelFile');
+            newFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files[0]);
+                }
+            });
+        }
+        
+        // Initialize
+        async function init() {
+            await loadStats();
+            await loadRiskChart();
+            await loadReasonsChart();
+            await loadCustomers();
+            await loadRoiData();
+            await loadMonitoringData();
+        }
+        
+        // --- ROI Tab Functions ---
+        let roiChart;
+        
+        async function loadRoiData() {
+            try {
+                const response = await fetch('/api/roi-summary');
+                const data = await response.json();
+                
+                if (data.total_customers === 0) {
+                    document.getElementById('totalRevenueLoss').textContent = '$0';
+                    document.getElementById('totalRetentionCost').textContent = '$0';
+                    document.getElementById('netSavings').textContent = '$0';
+                    document.getElementById('avgRoi').textContent = '0x';
+                    return;
+                }
+                
+                document.getElementById('totalRevenueLoss').textContent = '$' + data.total_expected_revenue_loss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('totalRetentionCost').textContent = '$' + data.total_retention_investment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('netSavings').textContent = '$' + data.net_savings_potential.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('avgRoi').textContent = data.average_retention_roi.toFixed(1) + 'x';
+                
+                // ROI Chart
+                const ctx = document.getElementById('roiChart').getContext('2d');
+                if (roiChart) roiChart.destroy();
+                roiChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Revenue at Risk', 'Retention Investment', 'Net Savings'],
+                        datasets: [{
+                            label: 'Amount ($)',
+                            data: [data.total_expected_revenue_loss, data.total_retention_investment, data.net_savings_potential],
+                            backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // ROI Breakdown table
+                const breakdownDiv = document.getElementById('roiBreakdown');
+                breakdownDiv.innerHTML = `
+                    <table class="customer-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>High-Risk Customers</td><td><strong>${data.total_high_risk}</strong></td></tr>
+                            <tr><td>Total Revenue at Risk</td><td style="color: #dc2626; font-weight: 600;">$${data.total_expected_revenue_loss.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>
+                            <tr><td>Total Retention Investment</td><td style="color: #d97706; font-weight: 600;">$${data.total_retention_investment.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>
+                            <tr><td>Net Savings Potential</td><td style="color: #059669; font-weight: 600;">$${data.net_savings_potential.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>
+                            <tr><td>Average Retention ROI</td><td><strong>${data.average_retention_roi.toFixed(1)}x</strong></td></tr>
+                            <tr><td>Positive ROI Customers</td><td>${data.positive_roi_customers}</td></tr>
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error('ROI load error:', e);
+            }
+        }
+        
+        // --- Monitoring Tab Functions ---
+        let performanceChart;
+        
+        async function loadMonitoringData() {
+            try {
+                const response = await fetch('/api/monitoring/performance');
+                const data = await response.json();
+                
+                const status = data.current_status || {};
+                document.getElementById('currentAuc').textContent = status.latest_auc ? status.latest_auc.toFixed(3) : '-';
+                document.getElementById('modelStatus').textContent = status.recommendation === 'retrain' ? '⚠️ Retrain' : '✅ Healthy';
+                document.getElementById('modelStatus').style.color = status.degraded ? '#dc2626' : '#059669';
+                
+                // Drift status
+                try {
+                    const driftResp = await fetch('/api/monitoring/drift-history');
+                    const driftData = await driftResp.json();
+                    const lastDrift = driftData.length > 0 ? driftData[driftData.length - 1] : null;
+                    document.getElementById('driftStatus').textContent = lastDrift && lastDrift.has_drift ? '⚠️ Drift' : '✅ Stable';
+                    document.getElementById('driftStatus').style.color = lastDrift && lastDrift.has_drift ? '#dc2626' : '#059669';
+                } catch(e) {
+                    document.getElementById('driftStatus').textContent = '✅ Stable';
+                }
+                
+                // Alert count
+                try {
+                    const alertResp = await fetch('/api/monitoring/alerts');
+                    const alertData = await alertResp.json();
+                    document.getElementById('alertCount').textContent = alertData.length;
+                } catch(e) {
+                    document.getElementById('alertCount').textContent = '0';
+                }
+                
+                // Performance chart
+                const history = data.history || [];
+                if (history.length > 0) {
+                    const ctx = document.getElementById('performanceChart').getContext('2d');
+                    if (performanceChart) performanceChart.destroy();
+                    performanceChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: history.map(h => h.measured_at ? h.measured_at.substring(0, 10) : ''),
+                            datasets: [{
+                                label: 'AUC',
+                                data: history.map(h => h.auc),
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    min: 0.5,
+                                    max: 1.0,
+                                    ticks: { stepSize: 0.1 }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                }
+                
+                // Alert history
+                try {
+                    const alertResp = await fetch('/api/monitoring/alerts');
+                    const alertData = await alertResp.json();
+                    const alertDiv = document.getElementById('alertHistory');
+                    if (alertData.length === 0) {
+                        alertDiv.innerHTML = '<div class="loading">No alerts recorded yet.</div>';
+                    } else {
+                        let html = `<table class="customer-table">
+                            <thead><tr><th>Timestamp</th><th>Subject</th><th>Status</th></tr></thead><tbody>`;
+                        alertData.slice().reverse().forEach(a => {
+                            const statusColor = a.status === 'sent' ? '#059669' : a.status === 'failed' ? '#dc2626' : '#6b7280';
+                            html += `<tr>
+                                <td>${(a.timestamp || '').replace('T', ' ').substring(0, 19)}</td>
+                                <td>${a.subject || '-'}</td>
+                                <td style="color: ${statusColor}; font-weight: 600;">${a.status || '-'}</td>
+                            </tr>`;
+                        });
+                        html += '</tbody></table>';
+                        alertDiv.innerHTML = html;
+                    }
+                } catch(e) {
+                    console.error('Alert history error:', e);
+                }
+                
+            } catch (e) {
+                console.error('Monitoring load error:', e);
+            }
+        }
+        
+        async function runDriftCheck() {
+            const driftDiv = document.getElementById('driftResults');
+            driftDiv.innerHTML = '<div class="loading">Running drift check...</div>';
+            
+            try {
+                // Use current telecom data for drift check
+                const response = await fetch('/api/drift', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify([])
+                });
+                
+                if (!response.ok) {
+                    driftDiv.innerHTML = '<div class="loading">Drift check requires data. Use batch API with customer data.</div>';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    driftDiv.innerHTML = `<div class="loading">${data.error}</div>`;
+                    return;
+                }
+                
+                let html = `<table class="customer-table">
+                    <thead><tr><th>Feature</th><th>Training Mean</th><th>Current Mean</th><th>Change</th><th>Status</th></tr></thead><tbody>`;
+                
+                const details = data.details || {};
+                Object.entries(details).forEach(([feature, info]) => {
+                    const statusHtml = info.drifted 
+                        ? '<span style="color: #dc2626; font-weight: 600;">⚠️ Drifted</span>' 
+                        : '<span style="color: #059669;">✅ OK</span>';
+                    html += `<tr>
+                        <td><strong>${feature.replace(/_/g, ' ')}</strong></td>
+                        <td>${info.training_mean !== undefined ? info.training_mean : info.training_rate || '-'}</td>
+                        <td>${info.new_mean !== undefined ? info.new_mean : info.new_rate || '-'}</td>
+                        <td>${info.pct_change || '-'}</td>
+                        <td>${statusHtml}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                
+                if (data.has_drift) {
+                    html = `<div style="background: #fef2f2; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: #dc2626;">
+                        ⚠️ <strong>Data drift detected!</strong> ${data.drift_count} feature(s) have shifted significantly.
+                    </div>` + html;
+                } else {
+                    html = `<div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: #059669;">
+                        ✅ <strong>No data drift detected.</strong> All features within expected range.
+                    </div>` + html;
+                }
+                
+                driftDiv.innerHTML = html;
+                
+            } catch (e) {
+                driftDiv.innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

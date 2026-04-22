@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+.env
+
+# Data and Models
+at_risk_customers.json
+churn_model.json
+model_metadata.json
+model_monitoring.json
+predictions_output.csv
+telecom_data.csv
+high_risk_customers.csv
+sample_customers.xlsx
+upload_template.xlsx
+*.pkl
+/data/
+
+# OS files
+.DS_Store
+Thumbs.db
