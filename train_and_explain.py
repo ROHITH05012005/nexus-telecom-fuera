@@ -660,11 +660,18 @@ class TelecomChurnPredictor:
         
         return predictions
     
-    def store_high_risk(self, predictions: List[ChurnPrediction]) -> int:
-        """Store high-risk customers in TinyDB with all enhanced data."""
-        high_risk = [p for p in predictions if p.risk_level == 'High']
+    def store_predictions(self, predictions: List[ChurnPrediction], 
+                          min_risk_level: Optional[str] = None) -> int:
+        """Store predictions in TinyDB with all enhanced data."""
+        # Optional filtering if user wants to only store specific risks
+        if min_risk_level == 'High':
+            to_store = [p for p in predictions if p.risk_level == 'High']
+        elif min_risk_level == 'Medium':
+            to_store = [p for p in predictions if p.risk_level in ['High', 'Medium']]
+        else:
+            to_store = predictions # Store all
         
-        for pred in high_risk:
+        for pred in to_store:
             # Convert numpy types to Python native for JSON serialization
             shap_converted = {}
             for k, v in pred.shap_values.items():
@@ -695,7 +702,7 @@ class TelecomChurnPredictor:
             Customer = Query()
             self.db.upsert(record, Customer.customer_id == pred.customer_id)
         
-        return len(high_risk)
+        return len(to_store)
     
     def export_high_risk_csv(self, predictions: List[ChurnPrediction], 
                              output_path: str = 'high_risk_customers.csv') -> pd.DataFrame:
@@ -802,9 +809,9 @@ def nightly_batch_predict(data_path: str = 'telecom_data.csv',
     # Run predictions
     predictions = predictor.predict_and_explain(df)
     
-    # Store high-risk
-    stored_count = predictor.store_high_risk(predictions)
-    print(f"Stored {stored_count} high-risk customers")
+    # Store all predictions (High, Medium, Low)
+    stored_count = predictor.store_predictions(predictions)
+    print(f"Stored {stored_count} predictions in database")
     
     # Improvement #5: Check alert threshold
     predictor.check_and_alert(predictions, threshold=alert_threshold,
@@ -858,9 +865,9 @@ def main():
     print("\nGenerating predictions with SHAP explanations...")
     predictions = predictor.predict_and_explain(df)
     
-    # Store high-risk
-    stored_count = predictor.store_high_risk(predictions)
-    print(f"Stored {stored_count} high-risk customers in TinyDB")
+    # Store all predictions in TinyDB
+    stored_count = predictor.store_predictions(predictions)
+    print(f"Stored {stored_count} customer predictions in TinyDB")
     
     # Improvement #5: Alert check
     predictor.check_and_alert(predictions, threshold=10)
