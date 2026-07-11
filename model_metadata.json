@@ -1,0 +1,35 @@
+{
+  "feature_names": [
+    "tenure",
+    "monthly_charges",
+    "total_charges",
+    "contract_type",
+    "payment_method",
+    "internet_service",
+    "price_shock_percent",
+    "tech_support_calls",
+    "has_premium_support",
+    "usage_spike_3month",
+    "data_usage_gb",
+    "overage_charges"
+  ],
+  "risk_threshold_high": 0.7,
+  "risk_threshold_medium": 0.4,
+  "training_stats": {
+    "mean_tenure": 22.194,
+    "mean_monthly_charges": 65.005464,
+    "mean_total_charges": 1430.296588,
+    "mean_price_shock": 9.456816,
+    "mean_tech_support_calls": 1.4748,
+    "mean_data_usage_gb": 49.397659999999995,
+    "mean_overage_charges": 62.957026,
+    "contract_type_distribution": {
+      "Month-to-Month": 0.5552,
+      "One Year": 0.2388,
+      "Two Year": 0.206
+    },
+    "churn_rate": 0.3962,
+    "sample_size": 5000
+  },
+  "saved_at": "2026-07-12T03:19:16.102146"
+}
