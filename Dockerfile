@@ -14,9 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Generate data and train model on first run
-RUN python data_generator.py
-RUN python train_and_explain.py
+
 
 # Expose Flask port
 EXPOSE 5000
