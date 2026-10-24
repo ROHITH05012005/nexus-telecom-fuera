@@ -457,36 +457,37 @@ class TelecomChurnPredictor:
         }
         
         for feature, (stat_key, new_val) in numeric_checks.items():
-            train_val = self.training_stats.get(stat_key, 0)
+            train_val = float(self.training_stats.get(stat_key, 0))
+            new_val = float(new_val)
             if train_val > 0:
-                pct_change = abs(new_val - train_val) / train_val
-                drifted = pct_change > threshold
+                pct_change = float(abs(new_val - train_val) / train_val)
+                drifted = bool(pct_change > threshold)
                 drift_results[feature] = {
                     'training_mean': round(train_val, 2),
                     'new_mean': round(new_val, 2),
                     'pct_change': f"{pct_change:.1%}",
-                    'drifted': drifted
+                    'drifted': bool(drifted)
                 }
                 if drifted:
                     alerts.append(f"{feature}: {pct_change:.1%} shift (threshold: {threshold:.0%})")
         
         # Check churn rate shift
         if 'churn' in new_data.columns:
-            new_churn_rate = new_data['churn'].mean()
-            train_churn_rate = self.training_stats.get('churn_rate', 0)
-            churn_shift = abs(new_churn_rate - train_churn_rate) / train_churn_rate if train_churn_rate > 0 else 0
+            new_churn_rate = float(new_data['churn'].mean())
+            train_churn_rate = float(self.training_stats.get('churn_rate', 0))
+            churn_shift = float(abs(new_churn_rate - train_churn_rate) / train_churn_rate) if train_churn_rate > 0 else 0.0
             drift_results['churn_rate'] = {
                 'training_rate': f"{train_churn_rate:.1%}",
                 'new_rate': f"{new_churn_rate:.1%}",
                 'pct_change': f"{churn_shift:.1%}",
-                'drifted': churn_shift > threshold
+                'drifted': bool(churn_shift > threshold)
             }
             if churn_shift > threshold:
                 alerts.append(f"Churn rate: {churn_shift:.1%} shift")
         
         result = {
-            'has_drift': len(alerts) > 0,
-            'drift_count': len(alerts),
+            'has_drift': bool(len(alerts) > 0),
+            'drift_count': int(len(alerts)),
             'alerts': alerts,
             'details': drift_results,
             'checked_at': datetime.now().isoformat()
@@ -495,8 +496,8 @@ class TelecomChurnPredictor:
         # Log drift check
         self.monitoring_db.insert({
             'type': 'drift_check',
-            'has_drift': result['has_drift'],
-            'drift_count': result['drift_count'],
+            'has_drift': bool(result['has_drift']),
+            'drift_count': int(result['drift_count']),
             'alerts': alerts,
             'checked_at': result['checked_at']
         })

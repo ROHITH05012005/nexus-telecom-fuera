@@ -1351,16 +1351,12 @@
                 });
                 
                 if (!response.ok) {
-                    driftDiv.innerHTML = '<div class="loading">Drift check requires data. Use batch API with customer data.</div>';
+                    const errData = await response.json().catch(() => ({}));
+                    driftDiv.innerHTML = `<div class="loading" style="color: #dc2626;">Error: ${errData.error || 'Failed to run drift check'}</div>`;
                     return;
                 }
                 
                 const data = await response.json();
-                
-                if (data.error) {
-                    driftDiv.innerHTML = `<div class="loading">${data.error}</div>`;
-                    return;
-                }
                 
                 let html = `<table class="customer-table">
                     <thead><tr><th>Feature</th><th>Training Mean</th><th>Current Mean</th><th>Change</th><th>Status</th></tr></thead><tbody>`;
