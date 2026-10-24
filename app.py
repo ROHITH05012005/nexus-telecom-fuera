@@ -421,34 +421,41 @@ def download_template():
 def check_drift():
     """
     Check for data drift by comparing uploaded data to training distribution.
-    Accepts JSON array of customer features.
+    Accepts JSON array of customer features, or falls back to telecom_data.csv.
     """
     if predictor is None:
         return model_not_loaded_response()
     
-    data = request.get_json()
-    if not data or not isinstance(data, list):
-        return jsonify({'error': 'Expected array of customers'}), 400
+    data = request.get_json(silent=True)
+    if data and isinstance(data, list) and len(data) > 0:
+        try:
+            rows = []
+            for item in data:
+                rows.append({
+                    'tenure': int(item.get('tenure', 12)),
+                    'monthly_charges': float(item.get('monthly_charges', 65.0)),
+                    'total_charges': float(item.get('total_charges', 780.0)),
+                    'price_shock_percent': float(item.get('price_shock_percent', 0)),
+                    'tech_support_calls': int(item.get('tech_support_calls', 0)),
+                    'data_usage_gb': float(item.get('data_usage_gb', 50)),
+                    'overage_charges': float(item.get('overage_charges', 0)),
+                    'contract_type': item.get('contract_type', 'Month-to-Month'),
+                    'churn': int(item.get('churn', 0))
+                })
+            new_data = pd.DataFrame(rows)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+    else:
+        # Fall back to telecom_data.csv so "Run Drift Check" in the UI works seamlessly
+        data_path = os.path.join(BASE_DIR, 'telecom_data.csv')
+        if os.path.exists(data_path):
+            new_data = pd.read_csv(data_path)
+        else:
+            return jsonify({'error': 'Drift check requires data. Please upload a dataset or provide customer data.'}), 400
     
     try:
-        rows = []
-        for item in data:
-            rows.append({
-                'tenure': int(item.get('tenure', 12)),
-                'monthly_charges': float(item.get('monthly_charges', 65.0)),
-                'total_charges': float(item.get('total_charges', 780.0)),
-                'price_shock_percent': float(item.get('price_shock_percent', 0)),
-                'tech_support_calls': int(item.get('tech_support_calls', 0)),
-                'data_usage_gb': float(item.get('data_usage_gb', 50)),
-                'overage_charges': float(item.get('overage_charges', 0)),
-                'contract_type': item.get('contract_type', 'Month-to-Month'),
-                'churn': int(item.get('churn', 0))
-            })
-        
-        new_data = pd.DataFrame(rows)
         drift_result = predictor.detect_drift(new_data)
         return jsonify(drift_result)
-        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
