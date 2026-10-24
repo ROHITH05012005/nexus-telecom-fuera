@@ -66,6 +66,15 @@ try:
         data_path = os.path.join(BASE_DIR, 'telecom_data.csv')
         df = pd.read_csv(data_path)
         predictor.train(df)
+    
+    # Pre-populate database with initial sample customers if empty so Dashboard and ROI work out-of-the-box
+    if len(db.all()) == 0:
+        data_path = os.path.join(BASE_DIR, 'telecom_data.csv')
+        if os.path.exists(data_path):
+            sample_df = pd.read_csv(data_path).head(100)
+            init_preds = predictor.predict_and_explain(sample_df)
+            predictor.store_predictions(init_preds)
+            
     print("Model ready")
 except Exception as e:
     print(f"Error loading model: {e}")
@@ -253,6 +262,7 @@ def predict_batch():
         
         # Get predictions
         predictions = predictor.predict_and_explain(input_df)
+        predictor.store_predictions(predictions)
         
         # Format results
         results = []
@@ -334,6 +344,7 @@ def predict_excel():
         
         # Get predictions
         predictions = predictor.predict_and_explain(df)
+        predictor.store_predictions(predictions)
         
         # Build results DataFrame
         results = []
@@ -556,18 +567,18 @@ def get_roi_summary():
     if not high_risk:
         return jsonify({'total_customers': 0})
     
-    total_loss = sum(r.get('expected_revenue_loss', 0) for r in high_risk)
-    total_cost = sum(r.get('retention_cost', 0) for r in high_risk)
-    rois = [r.get('retention_roi', 0) for r in high_risk if r.get('retention_roi', 0) > 0]
-    avg_roi = np.mean(rois) if rois else 0
+    total_loss = float(sum(r.get('expected_revenue_loss', 0) for r in high_risk))
+    total_cost = float(sum(r.get('retention_cost', 0) for r in high_risk))
+    rois = [float(r.get('retention_roi', 0)) for r in high_risk if r.get('retention_roi', 0) > 0]
+    avg_roi = float(np.mean(rois)) if rois else 0.0
     
     return jsonify({
-        'total_high_risk': len(high_risk),
+        'total_high_risk': int(len(high_risk)),
         'total_expected_revenue_loss': round(total_loss, 2),
         'total_retention_investment': round(total_cost, 2),
         'net_savings_potential': round(total_loss - total_cost, 2),
         'average_retention_roi': round(avg_roi, 2),
-        'positive_roi_customers': len(rois)
+        'positive_roi_customers': int(len(rois))
     })
 
 
