@@ -49,10 +49,13 @@ def require_api_key(f):
     return decorated
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Initialize database connection
-db = TinyDB('at_risk_customers.json')
+db = TinyDB(os.path.join(BASE_DIR, 'at_risk_customers.json'))
 
 # --- Improvement #1: Load saved model instead of retraining ---
+model_error = None
 try:
     from train_and_explain import TelecomChurnPredictor
     predictor = TelecomChurnPredictor()
@@ -60,12 +63,19 @@ try:
     # Try loading saved model first
     if not predictor.load_model():
         print("No saved model found. Training new model...")
-        df = pd.read_csv('telecom_data.csv')
+        data_path = os.path.join(BASE_DIR, 'telecom_data.csv')
+        df = pd.read_csv(data_path)
         predictor.train(df)
     print("Model ready")
 except Exception as e:
     print(f"Error loading model: {e}")
+    model_error = str(e)
     predictor = None
+
+
+def model_not_loaded_response():
+    err_msg = f'Model not loaded: {model_error}' if model_error else 'Model not loaded'
+    return jsonify({'error': err_msg}), 500
 
 
 def load_customer_data(risk_level=None, search_query=None):
@@ -212,7 +222,7 @@ def predict_batch():
     Accepts JSON array of customer features.
     """
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     data = request.get_json()
     
@@ -274,7 +284,7 @@ def predict_excel():
     has_premium_support, price_shock_percent, usage_spike_3month, data_usage_gb, overage_charges
     """
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
@@ -414,7 +424,7 @@ def check_drift():
     Accepts JSON array of customer features.
     """
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     data = request.get_json()
     if not data or not isinstance(data, list):
@@ -450,7 +460,7 @@ def check_drift():
 def get_performance():
     """Get model performance history and degradation check."""
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     history = predictor.get_performance_history()
     degradation = predictor.check_performance_degradation()
@@ -465,6 +475,8 @@ def get_performance():
 @require_api_key
 def get_drift_history():
     """Get historical drift check results."""
+    if predictor is None or predictor.monitoring_db is None:
+        return jsonify([])
     Drift = Query()
     records = predictor.monitoring_db.search(Drift.type == 'drift_check')
     return jsonify(records[-20:])
@@ -474,6 +486,8 @@ def get_drift_history():
 @require_api_key
 def get_alert_history():
     """Get historical alert records."""
+    if predictor is None or predictor.monitoring_db is None:
+        return jsonify([])
     Alert = Query()
     records = predictor.monitoring_db.search(Alert.type == 'alert')
     return jsonify(records[-20:])
@@ -489,7 +503,7 @@ def trigger_alert():
     Accepts JSON with optional recipients and smtp_config.
     """
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     data = request.get_json() or {}
     
@@ -579,7 +593,7 @@ def run_batch():
     Optionally accepts data_path in JSON body.
     """
     if predictor is None:
-        return jsonify({'error': 'Model not loaded'}), 500
+        return model_not_loaded_response()
     
     data = request.get_json() or {}
     data_path = data.get('data_path', 'telecom_data.csv')

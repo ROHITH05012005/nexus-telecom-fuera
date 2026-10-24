@@ -76,20 +76,23 @@ class TelecomChurnPredictor:
     Stores high-risk customers in TinyDB with all 10 improvements.
     """
     
-    # Improvement #1: Model file paths
-    MODEL_PATH = 'churn_model.json'
-    ENCODERS_PATH = 'encoders.pkl'
-    METADATA_PATH = 'model_metadata.json'
+    # Improvement #1: Model file paths (relative to script location)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    MODEL_PATH = os.path.join(BASE_DIR, 'churn_model.json')
+    ENCODERS_PATH = os.path.join(BASE_DIR, 'encoders.pkl')
+    METADATA_PATH = os.path.join(BASE_DIR, 'model_metadata.json')
     
-    def __init__(self, db_path: str = 'at_risk_customers.json',
-                 monitoring_db_path: str = 'model_monitoring.json'):
+    def __init__(self, db_path: str = None,
+                 monitoring_db_path: str = None):
         self.model = None
         self.explainer = None
         self.label_encoders = {}
         self.feature_names = None
-        self.db = TinyDB(db_path)
+        db_file = db_path or os.path.join(self.BASE_DIR, 'at_risk_customers.json')
+        monitoring_db_file = monitoring_db_path or os.path.join(self.BASE_DIR, 'model_monitoring.json')
+        self.db = TinyDB(db_file)
         # Improvement #10: Performance monitoring DB
-        self.monitoring_db = TinyDB(monitoring_db_path)
+        self.monitoring_db = TinyDB(monitoring_db_file)
         self.risk_threshold_high = 0.7
         self.risk_threshold_medium = 0.4
         # Improvement #6: Drift detection - store training stats
@@ -138,12 +141,17 @@ class TelecomChurnPredictor:
         model_path = path or self.MODEL_PATH
         
         if not os.path.exists(model_path):
+            print(f"Model file not found at: {model_path}")
             return False
         
         try:
             # Load XGBoost model
             self.model = xgb.XGBClassifier()
             self.model.load_model(model_path)
+            
+            # Ensure classes_ attribute exists for scikit-learn wrapper
+            if not hasattr(self.model, 'classes_'):
+                self.model.classes_ = np.array([0, 1])
             
             # Load label encoders
             if os.path.exists(self.ENCODERS_PATH):
@@ -159,10 +167,13 @@ class TelecomChurnPredictor:
                 self.risk_threshold_medium = metadata.get('risk_threshold_medium', 0.4)
                 self.training_stats = metadata.get('training_stats', {})
             
-            # Re-initialize SHAP explainer
-            self.explainer = shap.TreeExplainer(self.model)
+            # Re-initialize SHAP explainer using booster first, fallback to model
+            try:
+                self.explainer = shap.TreeExplainer(self.model.get_booster())
+            except Exception:
+                self.explainer = shap.TreeExplainer(self.model)
             
-            print(f"Model loaded from {model_path}")
+            print(f"Model loaded successfully from {model_path}")
             return True
             
         except Exception as e:
